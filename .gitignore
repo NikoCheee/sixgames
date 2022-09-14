@@ -1,1 +1,4 @@
 /6g_env
+.idea
+connect_four.py
+online_multiplayer_game.py
