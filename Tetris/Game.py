@@ -148,6 +148,24 @@ class Piece(object):
         self.rotation = 0
 
 
+def update_score(new_score):
+    score = max_score()
+
+    with open('scores.txt', 'w') as file:
+        if int(score) > int(new_score):
+            file.write(str(score))
+        else:
+            file.write(str(new_score))
+
+
+def max_score():
+    with open('scores.txt', 'r') as file:
+        lines = file.readlines()
+        score = lines[0].strip()
+
+    return score
+
+
 def create_grid(locked_positions={}):
     grid = [[(0, 0, 0) for j in range(10)] for i in range(20)]
 
@@ -201,8 +219,11 @@ def get_shape():
     return Piece(5, 0, random.choice(shapes))
 
 
-def draw_text_middle(text, size, color, surface):
-    pass
+def draw_text_middle(surface, text, size, color):
+    font = pygame.font.SysFont('comicsans', size, bold=True)
+    label = font.render(text, 1, color)
+
+    surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2), top_left_y + play_height/2 - label.get_height()/2))
 
 
 def draw_grid(surface, grid):
@@ -210,19 +231,55 @@ def draw_grid(surface, grid):
     sy = top_left_y
 
     for i in range(len(grid)):
-        pygame.draw.line(surface, (128, 128,128), (sx, sy + i*block_size), (sx+play_width, sy + i*block_size))
+        pygame.draw.line(surface, (128, 128, 128), (sx, sy + i*block_size), (sx+play_width, sy + i*block_size))
         for j in range(len(grid[i])):
             pygame.draw.line(surface, (128, 128, 128), (sx + j*block_size, sy), (sx + j*block_size, sy + play_height))
 
 
 def clear_rows(grid, locked):
-    pass
+    # need to see if row is clear the shift every other row above down one
+    inc = 0
+    for i in range(len(grid) - 1, -1, -1):
+        row = grid[i]
+        if (0, 0, 0) not in row:
+            inc += 1
+            # add positions to remove from locked
+            ind = i
+            for j in range(len(row)):
+                try:
+                    del locked[(j, i)]
+                except:
+                    continue
+
+    if inc > 0:
+        for key in sorted(list(locked), key=lambda x: x[1])[::-1]:
+            x, y = key
+            if y < ind:
+                new_key = (x, y + inc)
+                locked[new_key] = locked.pop(key)
+
+    return inc
+
 
 def draw_next_shape(shape, surface):
-    pass
+    font = pygame.font.SysFont('comicsans', 30)
+    label = font.render('Next Shape', 1, (255, 255, 255))
+
+    sx = top_left_x + play_width + 55
+    sy = top_left_y + play_height/2 - 85
+    format = shape.shape[shape.rotation % len(shape.shape)]
+
+    for i, line in enumerate(format):
+        row = list(line)
+        for j, column in enumerate(row):
+            if column == '0':
+                pygame.draw.rect(surface, shape.color, (sx + j*block_size, sy + i*block_size, block_size, block_size), 0)
+                pygame.draw.rect(surface, (128, 128, 128), (sx + j*block_size, sy + i*block_size, block_size, block_size), 1)
+
+    surface.blit(label, (sx - 15, sy - 50))
 
 
-def draw_window(surface, grid):
+def draw_window(surface, grid, score=0, high_score=0):
     surface.fill((0, 0, 0,))
 
     pygame.font.init()
@@ -231,6 +288,24 @@ def draw_window(surface, grid):
 
     surface.blit(label, (top_left_x + play_width / 2 - (label.get_width() / 2), 30))
 
+    # Current score
+    font = pygame.font.SysFont('comicsans', 30)
+    label = font.render(f'Score: {score}', 1, (255, 255, 255))
+
+    sx = top_left_x + play_width + 65
+    sy = top_left_y + play_height/2 - 190
+
+    surface.blit(label, (sx, sy))
+
+    # High score
+    font = pygame.font.SysFont('comicsans', 30)
+    label = font.render(f'High Score: {high_score}', 1, (255, 255, 255))
+
+    sx = top_left_x - 230
+    sy = top_left_y + 140
+
+    surface.blit(label, (sx, sy))
+
     for i in range(len(grid)):
         for j in range(len(grid[i])):
             pygame.draw.rect(surface, grid[i][j], (top_left_x + j*block_size, top_left_y + i*block_size, block_size, block_size), 0)
@@ -238,20 +313,21 @@ def draw_window(surface, grid):
     pygame.draw.rect(surface, (255, 0, 0), (top_left_x, top_left_y, play_width, play_height), 5)
 
     draw_grid(surface, grid)
-    pygame.display.update()
+    # pygame.display.update()
 
 
 def main(win):
+    last_score = max_score()
     locked_positions = {}
-    grid = create_grid(locked_positions)
-
+    # grid = create_grid(locked_positions)
     change_piece = False
     run = True
     current_piece = get_shape()
     next_piece = get_shape()
     clock = pygame.time.Clock()
     fall_time = 0
-    fall_speed = 0.3
+    fall_speed = 0.33
+    score = 0
 
     while run:
         grid = create_grid(locked_positions)
@@ -268,9 +344,10 @@ def main(win):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                pygame.display.quit()
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_SPACE:
                     current_piece.rotation += 1
                     if not(valid_space(current_piece, grid)):
                         current_piece.rotation -= 1
@@ -302,19 +379,38 @@ def main(win):
                 p = (pos[0], pos[1])
                 locked_positions[p] = current_piece.color
             current_piece = next_piece
+            if fall_speed > 0.1:
+                fall_speed -= 0.004
             next_piece = get_shape()
             change_piece = False
+            score += clear_rows(grid, locked_positions) * 10
 
-        draw_window(win, grid)
+        draw_window(win, grid, score, last_score)
+        draw_next_shape(next_piece, win)
+
+        pygame.display.update()
 
         if check_lost(locked_positions):
+            draw_text_middle(win, "TOU DIED", 80, (255, 255, 255))
+            pygame.display.update()
+            pygame.time.delay(2000)
             run = False
-
-    pygame.display.quit()
+            update_score(score)
 
 
 def main_menu(win):
-    main(win)
+    run = True
+    while run:
+        win.fill((0, 0, 0))
+        draw_text_middle(win, 'Press Any Key To Play', 60, (255, 255, 255))
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            if event.type == pygame.KEYDOWN:
+                main(win)
+
+    pygame.display.quit()
 
 
 win = pygame.display.set_mode((s_width, s_height))

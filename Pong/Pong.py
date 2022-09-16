@@ -1,5 +1,5 @@
 import turtle
-import os
+import winsound
 
 
 def pad_a_up():
@@ -28,7 +28,8 @@ def pad_b_down():
 
 def score_upd():
     pen.clear()
-    pen.write(f'Player A: {score_a}  Player B: {score_b}', align='center', font=('Courier', 24, 'normal'))
+    pen.write(f'Player A: {score_a}  Player B: {score_b}',
+              align='center', font=('Courier', 24, 'normal'))
 
 
 win = turtle.Screen()
@@ -74,7 +75,8 @@ pen.color('White')
 pen.penup()
 pen.hideturtle()
 pen.goto(0, 260)
-pen.write(f'Player A: {score_a}  Player B: {score_b}', align='center', font=('Courier', 24, 'normal'))
+pen.write(f'Player A: {score_a}  Player B: {score_b}',
+          align='center', font=('Courier', 24, 'normal'))
 
 # keyboard bindings
 win.listen()
@@ -96,7 +98,7 @@ while True:
     if ball.ycor() > 290:
         ball.sety(290)
         ball.dy *= -1
-        # os.system("D:\Pyton projects\LearnPythonSixGames\Pong\\bounce.mp3")
+        winsound.PlaySound('bounce.mp3', winsound.SND_ASYNC)
 
     if ball.ycor() < -290:
         ball.sety(-290)
@@ -140,4 +142,3 @@ while True:
         ball.setx(-340)
         # os.system("aplay bounce.mp3&")
         ball.dx *= -1.03
-
