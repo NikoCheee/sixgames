@@ -79,6 +79,7 @@ game_over = False
 turn = 0
 
 pygame.init()
+pygame.display.set_caption('Connect Four')
 
 SQUARESIZE = 100
 RADIUS = int(SQUARESIZE/2) - 5
